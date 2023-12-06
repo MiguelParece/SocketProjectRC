@@ -190,12 +190,32 @@ int CreateAUCTIONDir(int AID)
     return 1;
 }
 
-// create host file
-int CreateHostFile()
+// create host file if the hosted directory in the user
+int CreateHostFile(int AID, char *UID)
 {
+    char hostName[35];
+    FILE *fp;
+
+    if (strlen(UID) != 6)
+        return 0;
+
+    // Use snprintf to avoid potential buffer overflow
+    snprintf(hostName, sizeof(hostName), "USERS/%s/HOSTED/%03d.txt", UID, AID);
+
+    fp = fopen(hostName, "w");
+    if (fp == NULL)
+    {
+        printf("Error opening file!\n");
+        return 0;
+    }
+    fprintf(fp, "Hosted\n");
+
+    fclose(fp);
+
+    return 1;
 }
 
-// create auction
+// Start auction (create start file)
 int StartAuction(int *AID, char *UID, char *nameDescription, char *fileName, char *startValue, char *timeactive)
 {
     // create the start file
@@ -227,7 +247,7 @@ int StartAuction(int *AID, char *UID, char *nameDescription, char *fileName, cha
     return 1;
 }
 
-// end auction
+// end auction (create end file)
 int EndAuction(int AID)
 {
     // create the end file
