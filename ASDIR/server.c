@@ -190,6 +190,11 @@ int CreateAUCTIONDir(int AID)
     return 1;
 }
 
+// create host file
+int CreateHostFile()
+{
+}
+
 // create auction
 int StartAuction(int *AID, char *UID, char *nameDescription, char *fileName, char *startValue, char *timeactive)
 {
@@ -203,10 +208,152 @@ int StartAuction(int *AID, char *UID, char *nameDescription, char *fileName, cha
         printf("Error opening file!\n");
         return 0;
     }
+    // convert the timeactive to seconds
+    int timeactive_seconds = atoi(timeactive) * 60;
+
+    // get the current time
+    time_t fulltime;
+    struct tm *currenttime;
+    time(&fulltime);
+    currenttime = gmtime(&fulltime);
+
+    // create time string
+    char timeString[20];
+    sprintf(timeString, "%4d-%02d-%02d %02d:%02d:%02d", currenttime->tm_year + 1900, currenttime->tm_mon + 1, currenttime->tm_mday, currenttime->tm_hour, currenttime->tm_min, currenttime->tm_sec);
+
     // write in the start file UID name asset fname start value timeactive start datetime start fulltime
-    fprintf(fp, "%s %s %s %s %s \n", UID, nameDescription, fileName, startValue, timeactive);
+    fprintf(fp, "%s %s %s %s %d %s %ld \n", UID, nameDescription, fileName, startValue, timeactive_seconds, timeString, fulltime);
+    fclose(fp);
+    return 1;
 }
 
+// end auction
+int EndAuction(int AID)
+{
+    // create the end file
+    char endName[35];
+    snprintf(endName, sizeof(endName), "AUCTIONS/%03d/End_%03d.txt", AID, AID);
+    FILE *fp;
+    fp = fopen(endName, "w");
+    if (fp == NULL)
+    {
+        printf("Error opening file!\n");
+        return 0;
+    }
+    // get the current time
+    time_t fulltime;
+    struct tm *currenttime;
+    time(&fulltime);
+    currenttime = gmtime(&fulltime);
+
+    // get the time active of the auction
+    int AuctionStartTime = GetAuctionStartFullTime(AID);
+    int timeactive_seconds = fulltime - AuctionStartTime;
+
+    // create time string
+    char timeString[20];
+    sprintf(timeString, "%4d-%02d-%02d %02d:%02d:%02d", currenttime->tm_year + 1900, currenttime->tm_mon + 1, currenttime->tm_mday, currenttime->tm_hour, currenttime->tm_min, currenttime->tm_sec);
+    // write in the end file end datetime end fulltime
+    fprintf(fp, "%s %d \n", timeString, timeactive_seconds);
+    fclose(fp);
+
+    return 1;
+}
+
+// get the start fulltime of the auction
+int GetAuctionStartFullTime(int AID)
+{
+    // access the start file
+    char startName[35];
+    snprintf(startName, sizeof(startName), "AUCTIONS/%03d/Start_%03d.txt", AID, AID);
+    // check if the file exists
+    if (access(startName, F_OK) == -1)
+    {
+        printf("Start file does not exist\n");
+        return 0;
+    }
+    // read the start fulltime from the file
+    FILE *fp;
+    fp = fopen(startName, "r");
+    if (fp == NULL)
+    {
+        printf("Error opening file!\n");
+        return 0;
+    }
+    // read the start fulltime
+    long start_fulltime;
+    fscanf(fp, "%*s %*s %*s %*s %*d %*d-%*d-%*d %*d:%*d:%*d %ld", &start_fulltime);
+    fclose(fp);
+    return start_fulltime;
+}
+
+// get the time active of the auction from the start file
+int GetAuctionTimeActive(int AID)
+{
+    // access the start file
+    char startName[35];
+    snprintf(startName, sizeof(startName), "AUCTIONS/%03d/Start_%03d.txt", AID, AID);
+    // check if the file exists
+    if (access(startName, F_OK) == -1)
+    {
+        printf("Start file does not exist\n");
+        return 0;
+    }
+    // read the time active from the file
+    FILE *fp;
+    fp = fopen(startName, "r");
+    if (fp == NULL)
+    {
+        printf("Error opening file!\n");
+        return 0;
+    }
+    // read the time active
+    int timeactive;
+    fscanf(fp, "%*s %*s %*s %*s %d", &timeactive);
+    fclose(fp);
+    return timeactive;
+}
+
+// check if the auction should end or not (compare the time active + the fulltime with the current fulltime )
+int CheckAuctionEnd(int AID)
+{
+    // get the time active of the auction
+    int timeactive = GetAuctionTimeActive(AID);
+    // get the start fulltime of the auction
+    int AuctionStartTime = GetAuctionStartFullTime(AID);
+    // get the current time
+    time_t fulltime;
+    struct tm *currenttime;
+    time(&fulltime);
+    currenttime = gmtime(&fulltime);
+    // get the current fulltime
+    int current_fulltime = fulltime;
+    // check if the auction should end or not
+    if (current_fulltime >= AuctionStartTime + timeactive)
+        return 1;
+    else
+        return 0;
+}
+
+// check if the auction is still active (check if the end file exists)
+int CheckAuctionActive(int AID)
+{
+    // access the end file
+    char endName[35];
+    snprintf(endName, sizeof(endName), "AUCTIONS/%03d/End_%03d.txt", AID, AID);
+    // check if the file exists
+    if (access(endName, F_OK) == -1)
+    {
+        return 1;
+    }
+    else
+    {
+        printf("Auction is not active\n");
+        return 0;
+    }
+}
+
+// make a bid
 int MakeBid(int AID, int UID, int bid_ammount)
 {
     char AID_dirname[15];
@@ -232,15 +379,7 @@ int MakeBid(int AID, int UID, int bid_ammount)
         return 0;
     }
 
-    // Check if bid_ammount is valid
-    BIDLIST list;
-    int n = GetBidList(AID, &list);
-    if (n == 0)
-    {
-        printf("0 bids in this auction\n");
-        return 0;
-    }
-    int lastBid = list.bids[0].bid_ammount;
+    int lastBid = GetLastBid(AID);
 
     if (bid_ammount <= lastBid)
     {
@@ -295,6 +434,20 @@ int MakeBid(int AID, int UID, int bid_ammount)
     }
     // Return 1 to indicate successful creation of the bid file
     return 1;
+}
+
+// get last bid from auction
+int GetLastBid(int AID)
+{
+    BIDLIST list;
+    int n = GetBidList(AID, &list);
+    if (n == 0)
+    {
+        printf("0 bids in this auction\n");
+        return 0;
+    }
+    int lastBid = list.bids[0].bid_ammount;
+    return lastBid;
 }
 
 // Fazer um initializer ?
@@ -379,6 +532,6 @@ int main()
     createUserDir("000001");
     CreateLogin("000001");
     CreatePassword("000001", "123456");
-    MakeBid(322, 000001, 8000);
+    MakeBid(322, 000001, 10000);
     return 0;
 }
