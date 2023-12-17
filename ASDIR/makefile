@@ -10,3 +10,6 @@ AS: AS.c
 
 clean:
 	rm -f AS
+reset:
+	rm -f -r AUCTIONS/*
+	rm -f -r USERS/*

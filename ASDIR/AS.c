@@ -37,7 +37,7 @@
 #include <ctype.h>
 
 // Defines
-#define AS_PORT_BASE "58011"
+#define AS_PORT_BASE "58016"
 
 #define MAX_BUFFER_SIZE 1024 * 100
 #define MAX_FILENAME_LENGTH 24
@@ -88,12 +88,6 @@
 #define SHOW_REC_REQUEST "SRC"
 #define SHOW_REC_RESPONSE "RRC"
 
-struct User
-{
-    char uid[7];
-    char password[20];
-};
-
 // Global variables
 bool verbose = false;
 char AS_PORT[128];
@@ -121,17 +115,15 @@ typedef struct
 
 typedef struct
 {
-    int no_bids;   // Number of bids in the list
-    BID bids[999]; // Assuming a maximum of 50 bids, adjust as needed
+    int no_bids; // Number of bids in the list
+    BID bids[999];
 } BIDLIST;
 
 typedef struct
 {
-    int no_auctions;  // Number of auctions in the list
-    auction AID[999]; // Assuming a maximum of 50 auctions, adjust as needed
+    int no_auctions; // Number of auctions in the list
+    auction AID[999];
 } AUCTIONLIST;
-
-volatile sig_atomic_t num_children = 0;
 
 // check valid UID
 int checkUID(char *UID)
@@ -638,7 +630,6 @@ int CheckAuctionEnd(int AID)
         return 0;
 }
 
-// Update if all auctions should end or not
 // check if the auction is still active (check if the end file exists)
 int CheckAuctionActive(int AID)
 {
@@ -657,6 +648,7 @@ int CheckAuctionActive(int AID)
     }
 }
 
+// Update if all auctions should end or not
 int UpdateAllAuctions()
 {
     // get all entries dirs from directory AUCTIONS
@@ -1038,8 +1030,8 @@ int ListHostedAuctions(char *UID, AUCTIONLIST *list)
 {
     struct dirent **filelist;
     int entries, nauctions, len;
-    char dirname[20];
-    char pathname[32];
+    char dirname[MAX_BUFFER_SIZE];
+    char pathname[MAX_BUFFER_SIZE];
 
     // Create the directory path for the bids within the auction directory
     sprintf(dirname, "USERS/%s/HOSTED/", UID);
@@ -1092,8 +1084,8 @@ int ListAllAuctions(AUCTIONLIST *list)
 {
     struct dirent **filelist;
     int entries, nauctions, len;
-    char dirname[20];
-    char pathname[32];
+    char dirname[MAX_BUFFER_SIZE];
+    char pathname[MAX_BUFFER_SIZE];
 
     // Create the directory path for the bids within the auction directory
     sprintf(dirname, "AUCTIONS/");
@@ -1165,6 +1157,10 @@ int handleLoginRequest(int sockfd, char *UID, char *Password)
         CreatePassword(UID, Password);
         CreateLogin(UID);
         sprintf(response, "%s %s\n", LOGIN_RESPONSE, STATUS_REG);
+        if (verbose)
+        {
+            printf("response: %s\n", response);
+        }
         sendUDPMessage(sockfd, response);
         return 1;
     }
@@ -1182,6 +1178,10 @@ int handleLoginRequest(int sockfd, char *UID, char *Password)
     {
         printf("User is already logged in\n");
         sprintf(response, "%s %s\n", LOGIN_RESPONSE, STATUS_NOK);
+        if (verbose)
+        {
+            printf("response: %s\n", response);
+        }
         sendUDPMessage(sockfd, response);
         return 0;
     }
@@ -1193,6 +1193,10 @@ int handleLoginRequest(int sockfd, char *UID, char *Password)
     }
     // send response
     sprintf(response, "%s %s\n", LOGIN_RESPONSE, STATUS_OK);
+    if (verbose)
+    {
+        printf("response: %s\n", response);
+    }
     sendUDPMessage(sockfd, response);
     return 1;
 }
@@ -1206,6 +1210,10 @@ int handleLogoutRequest(int sockfd, char *UID, char *Password)
     {
         printf("User is not registered\n");
         sprintf(response, "%s %s\n", LOGOUT_RESPONSE, STATUS_UNR);
+        if (verbose)
+        {
+            printf("response: %s\n", response);
+        }
         sendUDPMessage(sockfd, response);
         return 0;
     }
@@ -1214,6 +1222,10 @@ int handleLogoutRequest(int sockfd, char *UID, char *Password)
     {
         printf("User is not logged in\n");
         sprintf(response, "%s %s\n", LOGOUT_RESPONSE, STATUS_NOK);
+        if (verbose)
+        {
+            printf("response: %s\n", response);
+        }
         sendUDPMessage(sockfd, response);
         return 0;
     }
@@ -1222,6 +1234,10 @@ int handleLogoutRequest(int sockfd, char *UID, char *Password)
     {
         printf("Password is incorrect\n");
         sprintf(response, "%s %s\n", LOGOUT_RESPONSE, STATUS_NOK);
+        if (verbose)
+        {
+            printf("response: %s\n", response);
+        }
         sendUDPMessage(sockfd, response);
         return 0;
     }
@@ -1233,6 +1249,10 @@ int handleLogoutRequest(int sockfd, char *UID, char *Password)
     }
     // send response
     sprintf(response, "%s %s\n", LOGOUT_RESPONSE, STATUS_OK);
+    if (verbose)
+    {
+        printf("response: %s\n", response);
+    }
     sendUDPMessage(sockfd, response);
     return 1;
 }
@@ -1246,6 +1266,10 @@ int handleUnregisterRequest(int sockfd, char *UID, char *Password)
     {
         printf("User is not registered\n");
         sprintf(response, "%s %s\n", UNREGISTER_RESPONSE, STATUS_UNR);
+        if (verbose)
+        {
+            printf("response: %s\n", response);
+        }
         sendUDPMessage(sockfd, response);
         return 0;
     }
@@ -1254,6 +1278,10 @@ int handleUnregisterRequest(int sockfd, char *UID, char *Password)
     {
         printf("User is not logged in\n");
         sprintf(response, "%s %s\n", UNREGISTER_RESPONSE, STATUS_NOK);
+        if (verbose)
+        {
+            printf("response: %s\n", response);
+        }
         sendUDPMessage(sockfd, response);
         return 0;
     }
@@ -1262,6 +1290,10 @@ int handleUnregisterRequest(int sockfd, char *UID, char *Password)
     {
         printf("Password is incorrect\n");
         sprintf(response, "%s %s\n", UNREGISTER_RESPONSE, STATUS_NOK);
+        if (verbose)
+        {
+            printf("response: %s\n", response);
+        }
         sendUDPMessage(sockfd, response);
         return 0;
     }
@@ -1279,6 +1311,10 @@ int handleUnregisterRequest(int sockfd, char *UID, char *Password)
     }
     // send response
     sprintf(response, "%s %s\n", UNREGISTER_RESPONSE, STATUS_OK);
+    if (verbose)
+    {
+        printf("response: %s\n", response);
+    }
     sendUDPMessage(sockfd, response);
     return 1;
 }
@@ -1292,6 +1328,10 @@ int handleListMyAucRequest(int sockfd, char *UID)
     {
         printf("User is not logged in\n");
         sprintf(response, "%s %s\n", LIST_MY_AUC_RESPONSE, STATUS_NLG);
+        if (verbose)
+        {
+            printf("response: %s\n", response);
+        }
         sendUDPMessage(sockfd, response);
         return 0;
     }
@@ -1304,7 +1344,10 @@ int handleListMyAucRequest(int sockfd, char *UID)
     {
         printf("0 auctions hosted by this user\n");
         sprintf(response, "%s %s\n", LIST_MY_AUC_RESPONSE, STATUS_NOK);
-
+        if (verbose)
+        {
+            printf("response: %s\n", response);
+        }
         sendUDPMessage(sockfd, response);
         return 0;
     }
@@ -1325,6 +1368,10 @@ int handleListMyAucRequest(int sockfd, char *UID)
 
     sprintf(response, "%s %s %s\n", LIST_MY_AUC_RESPONSE, STATUS_OK, auctions);
     printf("response: %s\n", response);
+    if (verbose)
+    {
+        printf("response: %s\n", response);
+    }
     sendUDPMessage(sockfd, response);
     return 1;
 }
@@ -1338,6 +1385,10 @@ int handleListMyBidRequest(int sockfd, char *UID)
     {
         printf("User is not logged in\n");
         sprintf(response, "%s %s\n", LIST_MY_BID_RESPONSE, STATUS_NLG);
+        if (verbose)
+        {
+            printf("response: %s\n", response);
+        }
         sendUDPMessage(sockfd, response);
         return 0;
     }
@@ -1350,7 +1401,10 @@ int handleListMyBidRequest(int sockfd, char *UID)
     {
         printf("0 bids made by this user\n");
         sprintf(response, "%s %s\n", LIST_MY_BID_RESPONSE, STATUS_NOK);
-
+        if (verbose)
+        {
+            printf("response: %s\n", response);
+        }
         sendUDPMessage(sockfd, response);
         return 0;
     }
@@ -1360,7 +1414,7 @@ int handleListMyBidRequest(int sockfd, char *UID)
 
     for (int i = 0; i < n; i++)
     {
-        char AID[4];
+        char AID[16];
         sprintf(AID, "%03d ", list.bids[i].auction_bid_id);
         strcat(bids, AID);
         if (list.bids[i].active)
@@ -1369,13 +1423,17 @@ int handleListMyBidRequest(int sockfd, char *UID)
             strcat(bids, "0 ");
     }
     sprintf(response, "%s %s %s\n", LIST_MY_BID_RESPONSE, STATUS_OK, bids);
+    if (verbose)
+    {
+        printf("response: %s\n", response);
+    }
     sendUDPMessage(sockfd, response);
     return 1;
 }
 
 int handleListAllAuctionsRequest(int sockfd)
 {
-    char response[MAX_BUFFER_SIZE];
+    char response[MAX_BUFFER_SIZE + 16];
 
     AUCTIONLIST list;
     int n = ListAllAuctions(&list);
@@ -1385,7 +1443,10 @@ int handleListAllAuctionsRequest(int sockfd)
     {
         printf("0 auctions hosted by this user\n");
         sprintf(response, "%s %s\n", LIST_AUC_RESPONSE, STATUS_NOK);
-
+        if (verbose)
+        {
+            printf("response: %s\n", response);
+        }
         sendUDPMessage(sockfd, response);
         return 0;
     }
@@ -1404,18 +1465,26 @@ int handleListAllAuctionsRequest(int sockfd)
             strcat(auctions, " 0 ");
     }
     sprintf(response, "%s %s %s\n", LIST_AUC_RESPONSE, STATUS_OK, auctions);
+    if (verbose)
+    {
+        printf("response: %s\n", response);
+    }
     sendUDPMessage(sockfd, response);
     return 1;
 }
 
 int handleShowRecRequest(int sockfd, char *AID)
 {
-    char response[MAX_BUFFER_SIZE];
+    char response[MAX_BUFFER_SIZE + 16];
     // check if auction exists
     if (!CheckAuctionExists(atoi(AID)))
     {
         printf("Auction does not exist\n");
         sprintf(response, "%s %s\n", SHOW_REC_RESPONSE, STATUS_NOK);
+        if (verbose)
+        {
+            printf("response: %s\n", response);
+        }
         sendUDPMessage(sockfd, response);
         return 0;
     }
@@ -1430,6 +1499,10 @@ int handleShowRecRequest(int sockfd, char *AID)
     {
         printf("Error opening file!\n");
         sprintf(response, "%s %s\n", SHOW_REC_RESPONSE, STATUS_NOK);
+        if (verbose)
+        {
+            printf("response: %s\n", response);
+        }
         sendUDPMessage(sockfd, response);
         return 0;
     }
@@ -1457,7 +1530,7 @@ int handleShowRecRequest(int sockfd, char *AID)
     // get the last 50 bids
     BIDLIST list;
     int n = GetBidListAuction(atoi(AID), &list);
-    char bids[MAX_BUFFER_SIZE];
+    char bids[MAX_BUFFER_SIZE - 1024];
 
     for (int i = 0; i < n; i++)
     {
@@ -1472,7 +1545,14 @@ int handleShowRecRequest(int sockfd, char *AID)
     }
     // make response
 
-    sprintf(response, "%s %s %s %s %s %d %d %d-%d-%d %d:%d:%d %d%s", SHOW_REC_RESPONSE, STATUS_OK, UID, Name, Fname, startValue, timeactive, year, month, day, hour, min, sec, n, bids);
+    if (n)
+    {
+        sprintf(response, "%s %s %s %s %s %d %4d-%02d-%02d %02d:%02d:%02d %d%s", SHOW_REC_RESPONSE, STATUS_OK, UID, Name, Fname, startValue, year, month, day, hour, min, sec, timeactive, bids);
+    }
+    else
+    {
+        sprintf(response, "%s %s %s %s %s %d %4d-%02d-%02d %02d:%02d:%02d %d", SHOW_REC_RESPONSE, STATUS_OK, UID, Name, Fname, startValue, year, month, day, hour, min, sec, timeactive);
+    }
     // check if the auction is active
     int i = CheckAuctionActive(atoi(AID));
     if (i == 0)
@@ -1504,6 +1584,10 @@ int handleShowRecRequest(int sockfd, char *AID)
     }
     strcat(response, "\n");
     // send response
+    if (verbose)
+    {
+        printf("response: %s\n", response);
+    }
     sendUDPMessage(sockfd, response);
     return 1;
 }
@@ -1533,6 +1617,10 @@ int handleUDPmessage(int sockfd, char *message)
             if (verbose)
                 printf("invalid input in command login\n");
             sprintf(response, "%s %s\n", LOGIN_RESPONSE, STATUS_ERR);
+            if (verbose)
+            {
+                printf("response: %s\n", response);
+            }
             sendUDPMessage(sockfd, response);
         }
     }
@@ -1550,6 +1638,10 @@ int handleUDPmessage(int sockfd, char *message)
             if (verbose)
                 printf("invalid input in command logout\n");
             sprintf(response, "%s %s\n", LOGOUT_RESPONSE, STATUS_ERR);
+            if (verbose)
+            {
+                printf("response: %s\n", response);
+            }
             sendUDPMessage(sockfd, response);
         }
     }
@@ -1567,6 +1659,10 @@ int handleUDPmessage(int sockfd, char *message)
             if (verbose)
                 printf("invalid input in command unregister\n");
             sprintf(response, "%s %s\n", UNREGISTER_RESPONSE, STATUS_ERR);
+            if (verbose)
+            {
+                printf("response: %s\n", response);
+            }
             sendUDPMessage(sockfd, response);
         }
     }
@@ -1583,6 +1679,10 @@ int handleUDPmessage(int sockfd, char *message)
             if (verbose)
                 printf("invalid input in command list my auctions\n");
             sprintf(response, "%s %s\n", LIST_MY_AUC_RESPONSE, STATUS_ERR);
+            if (verbose)
+            {
+                printf("response: %s\n", response);
+            }
             sendUDPMessage(sockfd, response);
         }
     }
@@ -1599,6 +1699,10 @@ int handleUDPmessage(int sockfd, char *message)
             if (verbose)
                 printf("invalid input in command list my bids\n");
             sprintf(response, "%s %s\n", LIST_MY_BID_RESPONSE, STATUS_ERR);
+            if (verbose)
+            {
+                printf("response: %s\n", response);
+            }
             sendUDPMessage(sockfd, response);
         }
     }
@@ -1613,6 +1717,10 @@ int handleUDPmessage(int sockfd, char *message)
             if (verbose)
                 printf("invalid input in command list all auctions\n");
             sprintf(response, "%s %s\n", LIST_AUC_RESPONSE, STATUS_ERR);
+            if (verbose)
+            {
+                printf("response: %s\n", response);
+            }
             sendUDPMessage(sockfd, response);
         }
     }
@@ -1629,6 +1737,10 @@ int handleUDPmessage(int sockfd, char *message)
             if (verbose)
                 printf("invalid input in command show record\n");
             sprintf(response, "%s %s\n", SHOW_REC_RESPONSE, STATUS_ERR);
+            if (verbose)
+            {
+                printf("response: %s\n", response);
+            }
             sendUDPMessage(sockfd, response);
         }
     }
@@ -1711,7 +1823,7 @@ int recieveFile(int sockfd, char *FilePath, int Fsize)
     // print
     printf("fszie: %d\n", Fsize);
     // check if Fsize is valid >0 and <10MB
-    if (Fsize < 0 || Fsize > 10000000)
+    if (Fsize < 0 || Fsize > MAX_FILE_SIZE)
     {
         return 0;
     }
@@ -1823,6 +1935,10 @@ int handleOpenAuction(int sockfd)
         if (verbose)
             printf("invalid input in command open auction\n");
         sprintf(response, "%s %s", OPEN_AUCTION_RESPONSE, STATUS_ERR);
+        if (verbose)
+        {
+            printf("response: %s\n", response);
+        }
         sendTCPMessage(sockfd, response);
         return 0;
     }
@@ -1831,6 +1947,10 @@ int handleOpenAuction(int sockfd)
     if (!CheckLogin(UID))
     {
         sprintf(response, "%s %s", OPEN_AUCTION_RESPONSE, STATUS_NLG);
+        if (verbose)
+        {
+            printf("response: %s\n", response);
+        }
         sendTCPMessage(sockfd, response);
         return 0;
     }
@@ -1838,6 +1958,10 @@ int handleOpenAuction(int sockfd)
     if (!CheckPassword(UID, Password))
     {
         sprintf(response, "%s %s", OPEN_AUCTION_RESPONSE, STATUS_NOK);
+        if (verbose)
+        {
+            printf("response: %s\n", response);
+        }
         sendTCPMessage(sockfd, response);
         return 0;
     }
@@ -1871,6 +1995,10 @@ int handleOpenAuction(int sockfd)
     }
     // create the "OK" response
     sprintf(response, "%s %s %03d", OPEN_AUCTION_RESPONSE, STATUS_OK, AID);
+    if (verbose)
+    {
+        printf("response: %s\n", response);
+    }
     sendTCPMessage(sockfd, response);
 
     return 1;
@@ -1892,6 +2020,10 @@ int handleCloseAuction(int sockfd)
     if (!checkUID(UID) && !checkPassword(password) && !checkAID(AID) && buffer[strlen(buffer) - 1] != '\n')
     {
         sprintf(response, "%s %s", CLOSE_AUCTION_RESPONSE, STATUS_ERR);
+        if (verbose)
+        {
+            printf("response: %s\n", response);
+        }
         sendTCPMessage(sockfd, response);
         return 0;
     }
@@ -1899,6 +2031,10 @@ int handleCloseAuction(int sockfd)
     if (!CheckLogin(UID))
     {
         sprintf(response, "%s %s", CLOSE_AUCTION_RESPONSE, STATUS_NLG);
+        if (verbose)
+        {
+            printf("response: %s\n", response);
+        }
         sendTCPMessage(sockfd, response);
         return 0;
     }
@@ -1906,6 +2042,10 @@ int handleCloseAuction(int sockfd)
     if (!CheckUserOwnsAuction(atoi(AID), UID))
     {
         sprintf(response, "%s %s", CLOSE_AUCTION_RESPONSE, STATUS_EOW);
+        if (verbose)
+        {
+            printf("response: %s\n", response);
+        }
         sendTCPMessage(sockfd, response);
         return 0;
     }
@@ -1914,6 +2054,10 @@ int handleCloseAuction(int sockfd)
     if (!CheckAuctionExists(atoi(AID)))
     {
         sprintf(response, "%s %s", CLOSE_AUCTION_RESPONSE, STATUS_EAU);
+        if (verbose)
+        {
+            printf("response: %s\n", response);
+        }
         sendTCPMessage(sockfd, response);
         return 0;
     }
@@ -1921,6 +2065,10 @@ int handleCloseAuction(int sockfd)
     if (!CheckAuctionActive(atoi(AID)))
     {
         sprintf(response, "%s %s", CLOSE_AUCTION_RESPONSE, STATUS_END);
+        if (verbose)
+        {
+            printf("response: %s\n", response);
+        }
         sendTCPMessage(sockfd, response);
         return 0;
     }
@@ -1931,6 +2079,10 @@ int handleCloseAuction(int sockfd)
         return 0;
     }
     sprintf(response, "%s %s", CLOSE_AUCTION_RESPONSE, STATUS_OK);
+    if (verbose)
+    {
+        printf("response: %s\n", response);
+    }
     sendTCPMessage(sockfd, response);
     return 1;
 }
@@ -1974,6 +2126,10 @@ int handleBidRequest(int sockfd)
     if (!CheckPassword(UID, password))
     {
         sprintf(response, "%s %s\n", BID_RESPONSE, STATUS_NOK);
+        if (verbose)
+        {
+            printf("response: %s\n", response);
+        }
         sendTCPMessage(sockfd, response);
         return 0;
     }
@@ -1981,6 +2137,10 @@ int handleBidRequest(int sockfd)
     if (!CheckLogin(UID))
     {
         sprintf(response, "%s %s\n", BID_RESPONSE, STATUS_NLG);
+        if (verbose)
+        {
+            printf("response: %s\n", response);
+        }
         sendTCPMessage(sockfd, response);
         return 0;
     }
@@ -1988,6 +2148,10 @@ int handleBidRequest(int sockfd)
     if (!CheckAuctionExists(atoi(AID)))
     {
         sprintf(response, "%s %s\n", BID_RESPONSE, STATUS_NOK);
+        if (verbose)
+        {
+            printf("response: %s\n", response);
+        }
         sendTCPMessage(sockfd, response);
         return 0;
     }
@@ -1995,6 +2159,10 @@ int handleBidRequest(int sockfd)
     if (!CheckAuctionActive(atoi(AID)))
     {
         sprintf(response, "%s %s\n", BID_RESPONSE, STATUS_NOK);
+        if (verbose)
+        {
+            printf("response: %s\n", response);
+        }
         sendTCPMessage(sockfd, response);
         return 0;
     }
@@ -2002,6 +2170,10 @@ int handleBidRequest(int sockfd)
     if (CheckUserOwnsAuction(atoi(AID), UID))
     {
         sprintf(response, "%s %s\n", BID_RESPONSE, STATUS_ILG);
+        if (verbose)
+        {
+            printf("response: %s\n", response);
+        }
         sendTCPMessage(sockfd, response);
         return 0;
     }
@@ -2011,6 +2183,10 @@ int handleBidRequest(int sockfd)
     if (bid_ammount <= lastBid)
     {
         sprintf(response, "%s %s\n", BID_RESPONSE, STATUS_REF);
+        if (verbose)
+        {
+            printf("response: %s\n", response);
+        }
         sendTCPMessage(sockfd, response);
         return 0;
     }
@@ -2019,10 +2195,18 @@ int handleBidRequest(int sockfd)
     if (i == 0)
     {
         sprintf(response, "%s %s\n", BID_RESPONSE, STATUS_ERR);
+        if (verbose)
+        {
+            printf("response: %s\n", response);
+        }
         sendTCPMessage(sockfd, response);
         return 0;
     }
     sprintf(response, "%s %s\n", BID_RESPONSE, STATUS_OK);
+    if (verbose)
+    {
+        printf("response: %s\n", response);
+    }
     sendTCPMessage(sockfd, response);
     return 1;
 }
@@ -2040,12 +2224,27 @@ int handleShowAsset(int sockfd)
     int bytes_read = read(sockfd, buffer, MAX_BUFFER_SIZE);
     sscanf(buffer, " %s\n", AID);
 
-    printf("SHOW ASSET OF -> %s\n", AID);
+    // check if inputs are valid and if message ends in \n
+    if (!checkAID(AID) && buffer[strlen(buffer) - 1] != '\n')
+    {
+        sprintf(response, "%s %s", SHOW_ASSET_RESPONSE, STATUS_ERR);
+        if (verbose)
+        {
+            printf("response: %s\n", response);
+        }
+        sendTCPMessage(sockfd, response);
+        return 0;
+    }
+
     // check if auction exists
     if (!CheckAuctionExists(atoi(AID)))
     {
         printf("Auction does not exist\n");
         sprintf(response, "%s %s", SHOW_ASSET_RESPONSE, STATUS_EAU);
+        if (verbose)
+        {
+            printf("response: %s\n", response);
+        }
         sendTCPMessage(sockfd, response);
         return 0;
     }
@@ -2057,6 +2256,10 @@ int handleShowAsset(int sockfd)
     if (fp == NULL)
     {
         sprintf(response, "%s %s", SHOW_ASSET_RESPONSE, STATUS_NOK);
+        if (verbose)
+        {
+            printf("response: %s\n", response);
+        }
         sendTCPMessage(sockfd, response);
         return 0;
     }
@@ -2079,6 +2282,10 @@ int handleShowAsset(int sockfd)
 
     // send response RSA status Fname Fsize Fdata
     sprintf(response, "%s %s %s %ld ", SHOW_ASSET_RESPONSE, STATUS_OK, fileName, Fsize);
+    if (verbose)
+    {
+        printf("response: %s\n", response);
+    }
     sendTCPMessage(sockfd, response);
 
     // get file descriptor of the file
@@ -2178,6 +2385,10 @@ int handleTCPCommand(int sockfd)
         }
         char response[MAX_BUFFER_SIZE];
         sprintf(response, "%s\n", STATUS_ERR);
+        if (verbose)
+        {
+            printf("response: %s\n", response);
+        }
         sendTCPMessage(sockfd, response);
         exit(EXIT_FAILURE);
     }
@@ -2275,7 +2486,6 @@ void *tcpThread(void *arg)
 int main(int argc, char *argv[])
 {
     strcpy(AS_PORT, AS_PORT_BASE);
-    printf("AS_PORT_base: %s\n", AS_PORT);
     int i = 1;
     // check is verbose is on and chosen port
     while (i < argc)

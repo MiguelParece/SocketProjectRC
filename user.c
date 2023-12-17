@@ -1,39 +1,91 @@
+// server side code
+
 #include <stdio.h>
+#include <time.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <arpa/inet.h>
+#include <pthread.h>
+#include <dirent.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <signal.h>
+#include <time.h>
+#include <sys/time.h>
+#include <sys/resource.h>
+#include <sys/sendfile.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
-#include <string.h>
 #include <stdbool.h>
-#include <stdio.h>
-#include <fcntl.h>
-#include <sys/sendfile.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
 #include <unistd.h>
-#include <fcntl.h>
-#include <sys/sendfile.h>
-#include <sys/stat.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <ctype.h>
 
 // #define AS_IP "tejo.tecnico.ulisboa.pt"
-#define AS_IP "localhost"
-#define AS_PORT "58011"
+#define AS_IP_BASE "localhost"
+#define AS_PORT_BASE "58016"
 
-#define AS_RESPONSETOKEN_LOGIN "RLU"
-#define AS_RESPONSETOKEN_ACCEPTED "OK"
-#define AS_RESPONSETOKEN_LOGIN_FAIL "NOK"
-#define AS_RESPONSETOKEN_LOGIN_REG "REG"
+#define STATUS_OK "OK"
+#define STATUS_NOK "NOK"
+#define STATUS_ERR "ERR"
+#define STATUS_NLG "NLG"
+#define STATUS_EAU "EAU"
+#define STATUS_EOW "EOW"
+#define STATUS_END "END"
+#define STATUS_REF "REF"
+#define STATUS_ILG "ILG"
+#define STATUS_REG "REG"
+#define STATUS_UNR "UNR"
 
-#define MAX_BUFFER_SIZE 1024 * 1000
+#define OPEN_AUCTION_REQUEST "OPA"
+#define OPEN_AUCTION_RESPONSE "ROA"
+
+#define CLOSE_AUCTION_REQUEST "CLS"
+#define CLOSE_AUCTION_RESPONSE "RCL"
+
+#define SHOW_ASSET_REQUEST "SAS "
+#define SHOW_ASSET_RESPONSE "RSA"
+
+#define BID_REQUEST "BID"
+#define BID_RESPONSE "RBD"
+
+#define LOGIN_REQUEST "LIN"
+#define LOGIN_RESPONSE "RLI"
+
+#define LOGOUT_REQUEST "LOU"
+#define LOGOUT_RESPONSE "RLO"
+
+#define UNREGISTER_REQUEST "UNR"
+#define UNREGISTER_RESPONSE "RUR"
+
+#define LIST_MY_AUC_REQUEST "LMA"
+#define LIST_MY_AUC_RESPONSE "RMA"
+
+#define LIST_MY_BID_REQUEST "LMB"
+#define LIST_MY_BID_RESPONSE "RMB"
+
+#define LIST_AUC_REQUEST "LST"
+#define LIST_AUC_RESPONSE "RLS"
+
+#define SHOW_REC_REQUEST "SRC"
+#define SHOW_REC_RESPONSE "RRC"
+
+#define MAX_BUFFER_SIZE 1024 * 100
 #define MAX_FILENAME_LENGTH 24
 #define MAX_FILE_SIZE 10000000 // 10 MB
 
@@ -45,6 +97,57 @@ struct User
 };
 // My User
 struct User myUser;
+// global variables
+char AS_IP[128];
+char AS_PORT[128];
+
+// check valid UID
+int checkUID(char *UID)
+{
+    int i;
+    if (strlen(UID) != 6)
+        return 0;
+    for (i = 0; i < 6; i++)
+    {
+        if (!isdigit(UID[i]))
+        {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+// check valid password
+int checkPassword(char *password)
+{
+    int i;
+    if (strlen(password) != 8)
+        return 0;
+    for (i = 0; i < strlen(password); i++)
+    {
+        if (!isalnum(password[i]))
+        {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+// check valid AID
+int checkAID(char *AID)
+{
+    int i;
+    if (strlen(AID) != 3)
+        return 0;
+    for (i = 0; i < 3; i++)
+    {
+        if (!isdigit(AID[i]))
+        {
+            return 0;
+        }
+    }
+    return 1;
+}
 
 // Function to send a message to the Auction Server using UDP
 void sendUDPMessage(const char *message, char *response)
@@ -155,7 +258,7 @@ void sendTCPMessage(const char *message, int fdImage, char *response)
     close(fd);
 }
 
-void reciveTCPFile(char *message)
+int reciveTCPFile(char *message)
 {
     int fd, errcode;
     ssize_t n;
@@ -164,19 +267,18 @@ void reciveTCPFile(char *message)
     char buffer[MAX_BUFFER_SIZE];
     fd = socket(AF_INET, SOCK_STREAM, 0); // TCP socket
     if (fd == -1)
-        exit(1); // error
-
+        return 1; // error
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_INET;       // IPv4
     hints.ai_socktype = SOCK_STREAM; // TCP socket
 
     errcode = getaddrinfo(AS_IP, AS_PORT, &hints, &res);
     if (errcode != 0)
-        exit(1); // error
+        return 1; // error
 
     n = connect(fd, res->ai_addr, res->ai_addrlen);
     if (n == -1)
-        exit(1); // error
+        return 1; // error
 
     // Send the message to the server
     size_t message_len = strlen(message);
@@ -228,7 +330,7 @@ void reciveTCPFile(char *message)
     if (fdFile == -1)
     {
         perror("Error opening file");
-        exit(EXIT_FAILURE);
+        return 0;
     }
     // read file
     int bytes_read = 0;
@@ -246,6 +348,7 @@ void reciveTCPFile(char *message)
     }
 
     close(fd);
+    return 1;
 }
 
 // Function to handle login request
@@ -254,30 +357,23 @@ void handleLogin()
     char request[MAX_BUFFER_SIZE];
     char response[MAX_BUFFER_SIZE];
     char token[4], status[3];
-    // check inputs
-    if (strlen(myUser.uid) != 6 || strlen(myUser.password) < 8)
+
+    sprintf(request, "%s %s %s\n", LOGIN_REQUEST, myUser.uid, myUser.password);
+
+    // Send the request to the Auction Server using UDP
+    sendUDPMessage(request, response);
+
+    printf("reses->%s\n", response);
+    // handle response
+    sscanf(response, "%s %s", token, status);
+    if (!strcmp(token, LOGIN_RESPONSE) || !strcmp(status, STATUS_OK) || !strcmp(status, STATUS_REG))
     {
-        write(1, "invalid login input\n", 20);
+        write(1, "success\n", 9);
+        myUser.loggedIn = true;
     }
     else
     {
-        sprintf(request, "LIN %s %s\n", myUser.uid, myUser.password);
-
-        // Send the request to the Auction Server using UDP
-        sendUDPMessage(request, response);
-
-        printf("reses->%s\n", response);
-        // handle response
-        sscanf(response, "%s %s", token, status);
-        if (!strcmp(status, AS_RESPONSETOKEN_ACCEPTED) || !strcmp(status, AS_RESPONSETOKEN_LOGIN_REG))
-        {
-            write(1, "success\n", 9);
-            myUser.loggedIn = true;
-        }
-        else
-        {
-            printf("%s %s\n", token, status);
-        }
+        printf("err: %s %s\n", token, status);
     }
 }
 
@@ -287,20 +383,20 @@ void handleLogout()
     char request[MAX_BUFFER_SIZE];
     char response[MAX_BUFFER_SIZE];
     char token[4], status[3];
-    sprintf(request, "LOU %s %s\n", myUser.uid, myUser.password);
+    sprintf(request, "%s %s %s\n", LOGOUT_REQUEST, myUser.uid, myUser.password);
 
     // Send the request to the Auction Server using UDP
     sendUDPMessage(request, response);
 
     sscanf(response, "%s %s", token, status);
-    if (!strcmp(status, AS_RESPONSETOKEN_ACCEPTED))
+    if (!strcmp(token, LOGOUT_RESPONSE) && !strcmp(status, STATUS_OK))
     {
         write(1, "success\n", 9);
         myUser.loggedIn = false;
     }
     else
     {
-        printf("%s %s\n", token, status);
+        printf("err: %s %s\n", token, status);
         scanf("%s", token);
     }
 }
@@ -311,20 +407,20 @@ void handleUnregister()
     char request[MAX_BUFFER_SIZE];
     char response[MAX_BUFFER_SIZE];
     char token[4], status[3];
-    sprintf(request, "UNR %s %s\n", myUser.uid, myUser.password);
+    sprintf(request, "%s %s %s\n", UNREGISTER_REQUEST, myUser.uid, myUser.password);
 
     // Send the request to the Auction Server using UDP
     sendUDPMessage(request, response);
 
     sscanf(response, "%s %s", token, status);
-    if (!strcmp(status, AS_RESPONSETOKEN_ACCEPTED))
+    if (!strcmp(token, UNREGISTER_RESPONSE) && !strcmp(status, STATUS_OK))
     {
         write(1, "success\n", 9);
         myUser.loggedIn = false;
     }
     else
     {
-        printf("%s %s\n", token, status);
+        printf("err: %s %s\n", token, status);
         scanf("%s", token);
     }
 }
@@ -354,70 +450,56 @@ void handleOpenAuction(char *name, char *assetFname,
     char request[MAX_BUFFER_SIZE];
     char response[MAX_BUFFER_SIZE];
 
-    sprintf(request, "OPA %s %s %s %s %s %s %ld ", myUser.uid, myUser.password, name, startValue, timeActive, assetFname, bytesTotal);
+    sprintf(request, "%s %s %s %s %s %s %s %ld ", OPEN_AUCTION_REQUEST, myUser.uid, myUser.password, name, startValue, timeActive, assetFname, bytesTotal);
     // Send the request to the Auction Server using TCP
     sendTCPMessage(request, imageFd, response);
+    close(imageFd);
 
     // Handle the response
+    char token[4];
     char status[3];
     char aid[7];
-    sscanf(response, "ROA %s %s", status, aid);
-
-    if (!strcmp(status, "NOK"))
+    sscanf(response, "%s %s %s\n", token, status, aid);
+    if (!strcmp(token, OPEN_AUCTION_RESPONSE) && !strcmp(status, STATUS_OK))
     {
-        printf("Auction could not be started.\n");
+        printf("Auction %s opened successfully.\n", aid);
     }
-    else if (!strcmp(status, "NLG"))
+    else if (!strcmp(status, STATUS_NLG))
     {
         printf("User not logged in.\n");
     }
-    else if (!strcmp(status, "OK"))
+    else if (!strcmp(status, STATUS_NOK))
     {
-        printf("Auction started successfully. Auction ID: %s\n", aid);
-        // Store local copy of the asset file using the filename Fname
-        // ...
+        printf("Auc could not be started.\n");
     }
-    else
-    {
-        printf("Invalid response status.\n");
-    }
-
-    close(imageFd);
-    // Receive and handle the response
-    // ...
 }
 
 void handleCloseAuction(const char *aid)
 {
     char request[MAX_BUFFER_SIZE];
     char response[MAX_BUFFER_SIZE];
-    sprintf(request, "CLS %s %s %s\n", myUser.uid, myUser.password, aid);
+    sprintf(request, "%s %s %s %s\n", CLOSE_AUCTION_REQUEST, myUser.uid, myUser.password, aid);
     // Send the request to the Auction Server using TCP
     sendTCPMessage(request, 0, response);
-
     // Handle the response
     char token[4], status[3];
-    sscanf(response, "RCL %s", status);
+    sscanf(response, "%s %s", token, status);
 
-    if (!strcmp(status, "OK"))
+    if (!strcmp(token, CLOSE_AUCTION_RESPONSE))
     {
-        printf("Auction %s closed successfully.\n", aid);
+        if (!strcmp(status, STATUS_OK))
+        {
+            printf("Auction %s closed successfully.\n", aid);
+        }
+        else if (!strcmp(status, STATUS_NOK))
+        {
+            printf("Auction %s could not be closed.\n", aid);
+        }
     }
-    else if (!strcmp(status, "NLG"))
+    else
     {
-        printf("User not logged in.\n");
-    }
-    else if (!strcmp(status, "EAU"))
-    {
-        printf("Auction %s does not exist.\n", aid);
-    }
-    else if (!strcmp(status, "EOW"))
-    {
-        printf("Auction %s is not owned by user %s.\n", aid, myUser.uid);
-    }
-    else if (!strcmp(status, "END"))
-    {
-        printf("Auction %s owned by user %s has already finished.\n", aid, myUser.uid);
+
+        printf("Err in response\n");
     }
 }
 
@@ -425,9 +507,9 @@ void handleCloseAuction(const char *aid)
 void handleMyAuctions()
 {
     char request[MAX_BUFFER_SIZE];
-    char response[MAX_BUFFER_SIZE * 10];
+    char response[MAX_BUFFER_SIZE];
     char token[4], status[3], list[MAX_BUFFER_SIZE];
-    sprintf(request, "LMA %s\n", myUser.uid);
+    sprintf(request, "%s %s\n", LIST_MY_AUC_REQUEST, myUser.uid);
 
     // Send the request to the Auction Server using UDP
 
@@ -436,7 +518,7 @@ void handleMyAuctions()
     int n = 0;
     sscanf(response, "%s %s %n", token, status, &n);
     strcpy(list, response + n);
-    if (!strcmp(status, AS_RESPONSETOKEN_ACCEPTED))
+    if (!strcmp(token, LIST_MY_BID_RESPONSE) && !strcmp(status, STATUS_OK))
     {
         write(1, "success\n", 9);
         printf("Auctions owned by user %s:\n", myUser.uid);
@@ -444,7 +526,14 @@ void handleMyAuctions()
     }
     else
     {
-        printf("%s %s\n", token, status);
+        if (!strcmp(status, STATUS_NLG))
+        {
+            printf("User %s is not logged in the server.\n", myUser.uid);
+        }
+        else if (!strcmp(status, STATUS_NOK))
+        {
+            printf("User %s does not have any auctions.\n", myUser.uid);
+        }
     }
 }
 
@@ -453,14 +542,33 @@ void handleMyBids()
 {
     char request[MAX_BUFFER_SIZE];
     char response[MAX_BUFFER_SIZE];
-    sprintf(request, "LMB %s\n", myUser.uid);
+    sprintf(request, "%s %s\n", LIST_MY_BID_REQUEST, myUser.uid);
 
     // Send the request to the Auction Server using UDP
     sendUDPMessage(request, response);
 
     // Receive and handle the response
-    printf("->%s", response);
-    // ...
+    char token[4], status[3], list[MAX_BUFFER_SIZE];
+    int n = 0;
+    sscanf(response, "%s %s %n", token, status, &n);
+    strcpy(list, response + n);
+    if (!strcmp(token, LIST_MY_BID_RESPONSE) && !strcmp(status, STATUS_OK))
+    {
+        write(1, "success\n", 9);
+        printf("Auctions where user %s has bid:\n", myUser.uid);
+        printf("%s\n", list);
+    }
+    else
+    {
+        if (!strcmp(status, STATUS_NLG))
+        {
+            printf("User %s is not logged in the server.\n", myUser.uid);
+        }
+        else if (!strcmp(status, STATUS_NOK))
+        {
+            printf("User %s does not have any bids.\n", myUser.uid);
+        }
+    }
 }
 
 // Function to handle list request
@@ -470,14 +578,29 @@ void handleList()
     char response[MAX_BUFFER_SIZE];
 
     // clear response
-    sprintf(request, "LST\n");
+    sprintf(request, "%s\n", LIST_AUC_REQUEST);
 
     // Send the request to the Auction Server using UDP
     sendUDPMessage(request, response);
 
-    printf("->%s\n", response);
-    // Receive and handle the response
-    // ...
+    char token[4], status[3], list[MAX_BUFFER_SIZE];
+    int n = 0;
+    sscanf(response, "%s %s %n", token, status, &n);
+    strcpy(list, response + n);
+    if (!strcmp(token, LIST_AUC_RESPONSE) && !strcmp(status, STATUS_OK))
+    {
+        write(1, "success\n", 9);
+        printf("Auctions available:\n");
+        printf("%s\n", list);
+    }
+    else
+    {
+
+        if (!strcmp(status, STATUS_NOK))
+        {
+            printf("No auctions has started.\n");
+        }
+    }
 }
 
 // Function to handle show_asset request
@@ -485,9 +608,13 @@ void handleShowAsset(const char *aid)
 {
 
     char request[MAX_BUFFER_SIZE];
-    sprintf(request, "SAS %s\n", aid);
+    sprintf(request, "%s %s\n", SHOW_ASSET_REQUEST, aid);
     // Send the request to the Auction Server using TCP
-    reciveTCPFile(request);
+    int i = reciveTCPFile(request);
+    if (i == 1)
+    {
+        printf("Asset Acquired\n");
+    }
 }
 
 // Function to handle bid request
@@ -496,14 +623,36 @@ void handleBid(const char *aid, const char *value)
     char request[MAX_BUFFER_SIZE];
     char response[MAX_BUFFER_SIZE];
 
-    sprintf(request, "BID %s %s %s %s\n", myUser.uid, myUser.password, aid, value);
+    sprintf(request, "%s %s %s %s %s\n", BID_REQUEST, myUser.uid, myUser.password, aid, value);
 
     // Send the request to the Auction Server using TCP
     sendTCPMessage(request, 0, response);
 
-    printf("->%s", response);
-    // Receive and handle the response
-    // ...
+    char token[4], status[3];
+    sscanf(response, "%s %s", token, status);
+    if (!strcmp(token, BID_RESPONSE))
+    {
+        if (!strcmp(status, STATUS_OK))
+        {
+            printf("Bid placed successfully.\n");
+        }
+        else if (!strcmp(status, STATUS_NOK))
+        {
+            printf("Bid could not be placed.\n");
+        }
+        else if (!strcmp(status, STATUS_NLG))
+        {
+            printf("User is not logged in.\n");
+        }
+        else if (!strcmp(status, STATUS_ILG))
+        {
+            printf("You cannot bid on your auctions.\n");
+        }
+    }
+    else
+    {
+        printf("Err in response\n");
+    }
 }
 
 // Function to handle show_record request
@@ -522,53 +671,66 @@ void handleShowRecord(const char *aid)
     // Parse the response
     char token[4];
     char status[4];
+    char list[MAX_BUFFER_SIZE];
     char host_UID[MAX_BUFFER_SIZE];
     char auction_name[MAX_BUFFER_SIZE];
     char asset_fname[MAX_BUFFER_SIZE];
-    char start_value[MAX_BUFFER_SIZE];
+    int startValue;
+    int timeactive;
+    int n, year, month, day, hour, minute, second;
+
+    sscanf(response, "%s %s %s %s %s %d %4d-%02d-%02d %02d:%02d:%02d %d %n", token, status, host_UID, auction_name, asset_fname, &startValue, &year, &month, &day, &hour, &minute, &second, &timeactive, &n);
+    // timestring
     char start_date_time[20];
-    char start_date[11];
-    char timeactive[7];
+    sprintf(start_date_time, "%4d-%02d-%02d %02d:%02d:%02d", year, month, day, hour, minute, second);
 
-    sscanf(response, "%s %s %s %s %s %s %s %s %s", token, status, host_UID, auction_name, asset_fname, start_value, start_date, start_date_time, timeactive);
+    strcpy(list, response + n);
 
-    if (strcmp(status, "NOK") == 0)
+    if (!strcmp(token, SHOW_REC_RESPONSE) && !strcmp(status, STATUS_OK))
     {
-        printf("Auction does not exist.\n");
-    }
-    else if (strcmp(status, "OK") == 0)
-    {
-        printf("Auction details:\n");
+        printf("Auction %s:\n", aid);
         printf("Host UID: %s\n", host_UID);
-        printf("Auction Name: %s\n", auction_name);
-        printf("Asset File Name: %s\n", asset_fname);
-        printf("Start Value: %s\n", start_value);
-        printf("Start Date and Time: %s - %s\n", start_date, start_date_time);
-        printf("Time Active: %s seconds\n", timeactive);
+        printf("Auction name: %s\n", auction_name);
+        printf("Asset filename: %s\n", asset_fname);
+        printf("Start value: %d\n", startValue);
+        printf("Start time: %s\n", start_date_time);
+        printf("Time active: %dc\n", timeactive);
 
-        // Calculate the length of the parsed part
-        size_t parsed_length = strlen(token) + strlen(status) + strlen(host_UID) + strlen(auction_name) + strlen(asset_fname) +
-                               strlen(start_value) + strlen(start_date_time) + strlen(start_date) + strlen(timeactive) + 9;
-
-        // Check if there are bids
-        printf("Bids:\n %s\n", response + parsed_length);
+        printf("Bids:\n");
+        printf("%s\n", list);
+    }
+    else if (!strcmp(status, STATUS_NOK))
+    {
+        printf("Auction %s does not exist.\n", aid);
+    }
+    else
+    {
+        printf("Err in response\n");
     }
 }
-// ...
 
-int main()
-{
-    // clear response buffer
-    myUser.loggedIn = true;
-    strcpy(myUser.uid, "000004");
-    strcpy(myUser.password, "password");
-    handleOpenAuction("name", "0.jpg", "100", "100");
-    return 0;
-}
 // Main function
-/*int main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
     printf("Welcome to the Auction Client!\n");
+    strcpy(AS_PORT, AS_PORT_BASE);
+    strcpy(AS_IP, AS_IP_BASE);
+    int i = 1;
+    // check is verbose is on and chosen port
+    while (i < argc)
+    {
+
+        if (!strcmp(argv[i], "-n"))
+        {
+            strcpy(AS_IP, argv[i + 1]);
+        }
+        if (!strcmp(argv[i], "-p"))
+        {
+            strcpy(AS_PORT, argv[i + 1]);
+        }
+        i++;
+    }
+
     char command[128];
     while (1)
     {
@@ -581,7 +743,10 @@ int main()
             {
                 scanf("%s", myUser.uid);
                 scanf("%s", myUser.password);
-                handleLogin();
+                if (checkUID(myUser.uid) && checkPassword(myUser.password))
+                {
+                    handleLogin();
+                }
             }
             else
             {
@@ -646,8 +811,7 @@ int main()
         {
             char aid[128];
             scanf("%s", aid);
-            write(1, "MAMAS\n", 6);
-            if (myUser.loggedIn)
+            if (myUser.loggedIn && checkAID(aid))
             {
                 handleCloseAuction(aid);
             }
@@ -660,21 +824,15 @@ int main()
         else if (!strcmp(command, "show_assets") || !strcmp(command, "sa"))
         {
             char aid[128];
-            if (myUser.loggedIn)
-            {
-                scanf("%s", aid);
+            scanf("%s", aid);
+            if (checkAID(aid))
                 handleShowAsset(aid);
-            }
-            else
-            {
-                write(1, "You are not logged in\n", 23);
-            }
         }
         // command bid
         else if (!strcmp(command, "bid") || !strcmp(command, "b"))
         {
             char aid[128], value[128];
-            if (myUser.loggedIn)
+            if (myUser.loggedIn && checkAID(aid))
             {
                 scanf("%s", aid);
                 scanf("%s", value);
@@ -700,29 +858,21 @@ int main()
         // command list
         else if (!strcmp(command, "list"))
         {
-            if (myUser.loggedIn)
-            {
-                handleList();
-            }
-            else
-            {
-                write(1, "You are not logged in\n", 23);
-            }
+
+            handleList();
         }
         // command show_record
         else if (!strcmp(command, "show_record") || !strcmp(command, "sr"))
         {
             char aid[128];
-            if (myUser.loggedIn)
-            {
-                scanf("%s", aid);
+
+            scanf("%s", aid);
+            if (checkAID(aid))
                 handleShowRecord(aid);
-            }
-            else
-            {
-                write(1, "You are not logged in\n", 23);
-            }
+        }
+        else
+        {
+            write(1, "Invalid command\n", 16);
         }
     }
 }
-*/
