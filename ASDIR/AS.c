@@ -115,7 +115,7 @@ typedef struct
 
 typedef struct
 {
-    int AID;     // auction idº
+    int AID;     // auction id number
     bool active; // auction active
 } auction;
 
@@ -133,7 +133,97 @@ typedef struct
 
 volatile sig_atomic_t num_children = 0;
 
-// declare all functions bellow
+// check valid UID
+int checkUID(char *UID)
+{
+    int i;
+    if (strlen(UID) != 6)
+        return 0;
+    for (i = 0; i < 6; i++)
+    {
+        if (!isdigit(UID[i]))
+        {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+// check valid password
+int checkPassword(char *password)
+{
+    int i;
+    if (strlen(password) != 8)
+        return 0;
+    for (i = 0; i < strlen(password); i++)
+    {
+        if (!isalnum(password[i]))
+        {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+// check valid AID
+int checkAID(char *AID)
+{
+    int i;
+    if (strlen(AID) != 3)
+        return 0;
+    for (i = 0; i < 3; i++)
+    {
+        if (!isdigit(AID[i]))
+        {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+// check if valid filename
+int checkFilename(const char *filename)
+{
+    int length = strlen(filename);
+
+    if (length > 24)
+    {
+        return 0;
+    }
+
+    int dotIndex = -1;
+    int extensionLength = 0;
+
+    for (int i = 0; i < length; i++)
+    {
+        char ch = filename[i];
+
+        if (isalnum(ch) || ch == '-' || ch == '_' || ch == '.')
+        {
+            if (ch == '.')
+            {
+                dotIndex = i;
+            }
+        }
+        else
+        {
+            return 0;
+        }
+    }
+
+    // check right side
+    if (dotIndex == -1 || dotIndex > length - 4)
+    {
+
+        return 0;
+    }
+    extensionLength = length - dotIndex - 1;
+    if (extensionLength != 3)
+    {
+        return 0;
+    }
+    return 1;
+}
 
 // handle users
 int createUserDir(char *UID)
@@ -1424,7 +1514,8 @@ int handleUDPmessage(int sockfd, char *message)
     // read socket
     char command[4];
     sscanf(message, "%s ", command);
-    printf("message: %s\n", command);
+    if (verbose)
+        printf("message: %s\n", command);
     // check if command is valid
 
     // handle the command
@@ -1433,52 +1524,122 @@ int handleUDPmessage(int sockfd, char *message)
         char UID[7];
         char Password[8];
         sscanf(message, "%*s %s %s", UID, Password);
-        printf("UID: %s\n", UID);
-        printf("Password: %s\n", Password);
-        handleLoginRequest(sockfd, UID, Password);
+        // check if inputs are valid and if message ends in \n
+        if (checkUID(UID) && checkPassword(Password) && message[strlen(message) - 1] == '\n')
+            handleLoginRequest(sockfd, UID, Password);
+        else
+        {
+            char response[MAX_BUFFER_SIZE];
+            if (verbose)
+                printf("invalid input in command login\n");
+            sprintf(response, "%s %s\n", LOGIN_RESPONSE, STATUS_ERR);
+            sendUDPMessage(sockfd, response);
+        }
     }
     else if (!strcmp(command, LOGOUT_REQUEST))
     {
         char UID[7];
         char Password[8];
         sscanf(message, "%*s %s %s", UID, Password);
-        printf("UID: %s\n", UID);
-        printf("Password: %s\n", Password);
-        handleLogoutRequest(sockfd, UID, Password);
+        // check if inputs are valid and if message ends in \n
+        if (checkUID(UID) && checkPassword(Password) && message[strlen(message) - 1] == '\n')
+            handleLogoutRequest(sockfd, UID, Password);
+        else
+        {
+            char response[MAX_BUFFER_SIZE];
+            if (verbose)
+                printf("invalid input in command logout\n");
+            sprintf(response, "%s %s\n", LOGOUT_RESPONSE, STATUS_ERR);
+            sendUDPMessage(sockfd, response);
+        }
     }
     else if (!strcmp(command, UNREGISTER_REQUEST))
     {
         char UID[7];
         char Password[8];
         sscanf(message, "%*s %s %s", UID, Password);
-        printf("UID: %s\n", UID);
-        printf("Password: %s\n", Password);
-        handleUnregisterRequest(sockfd, UID, Password);
+        // check if inputs are valid and if message ends in \n
+        if (checkUID(UID) && checkPassword(Password) && message[strlen(message) - 1] == '\n')
+            handleUnregisterRequest(sockfd, UID, Password);
+        else
+        {
+            char response[MAX_BUFFER_SIZE];
+            if (verbose)
+                printf("invalid input in command unregister\n");
+            sprintf(response, "%s %s\n", UNREGISTER_RESPONSE, STATUS_ERR);
+            sendUDPMessage(sockfd, response);
+        }
     }
     else if (!strcmp(command, LIST_MY_AUC_REQUEST))
     {
         char UID[7];
         sscanf(message, "%*s %s", UID);
-        printf("UID: %s\n", UID);
-        handleListMyAucRequest(sockfd, UID);
+        // check if inputs are valid and if message ends in \n
+        if (checkUID(UID) && message[strlen(message) - 1] == '\n')
+            handleListMyAucRequest(sockfd, UID);
+        else
+        {
+            char response[MAX_BUFFER_SIZE];
+            if (verbose)
+                printf("invalid input in command list my auctions\n");
+            sprintf(response, "%s %s\n", LIST_MY_AUC_RESPONSE, STATUS_ERR);
+            sendUDPMessage(sockfd, response);
+        }
     }
     else if (!strcmp(command, LIST_MY_BID_REQUEST))
     {
         char UID[7];
         sscanf(message, "%*s %s", UID);
-        printf("UID: %s\n", UID);
-        handleListMyBidRequest(sockfd, UID);
+        // check if inputs are valid and if message ends in \n
+        if (checkUID(UID) && message[strlen(message) - 1] == '\n')
+            handleListMyBidRequest(sockfd, UID);
+        else
+        {
+            char response[MAX_BUFFER_SIZE];
+            if (verbose)
+                printf("invalid input in command list my bids\n");
+            sprintf(response, "%s %s\n", LIST_MY_BID_RESPONSE, STATUS_ERR);
+            sendUDPMessage(sockfd, response);
+        }
     }
     else if (!strcmp(command, LIST_AUC_REQUEST))
     {
-        handleListAllAuctionsRequest(sockfd);
+        // check if message ends in \n
+        if (message[strlen(message) - 1] == '\n')
+            handleListAllAuctionsRequest(sockfd);
+        else
+        {
+            char response[MAX_BUFFER_SIZE];
+            if (verbose)
+                printf("invalid input in command list all auctions\n");
+            sprintf(response, "%s %s\n", LIST_AUC_RESPONSE, STATUS_ERR);
+            sendUDPMessage(sockfd, response);
+        }
     }
     else if (!strcmp(command, SHOW_REC_REQUEST))
     {
         char AID[4];
         sscanf(message, "%*s %s", AID);
-        printf("AID: %s\n", AID);
-        handleShowRecRequest(sockfd, AID);
+        // check if inputs are valid and if message ends in \n
+        if (checkAID(AID) && message[strlen(message) - 1] == '\n')
+            handleShowRecRequest(sockfd, AID);
+        else
+        {
+            char response[MAX_BUFFER_SIZE];
+            if (verbose)
+                printf("invalid input in command show record\n");
+            sprintf(response, "%s %s\n", SHOW_REC_RESPONSE, STATUS_ERR);
+            sendUDPMessage(sockfd, response);
+        }
+    }
+    else
+    {
+        if (verbose)
+        {
+            printf("recieved a command not recognized\n");
+        }
+        char response[MAX_BUFFER_SIZE];
+        sprintf(response, "%s\n", STATUS_ERR);
     }
 }
 
@@ -1524,7 +1685,12 @@ void *udpThread(void *arg)
             exit(1);
         }
 
-        printf("FORK!\n");
+        if (verbose)
+        {
+            printf("UDP message recieved\n");
+            printf("update all auctions...\n");
+        }
+        UpdateAllAuctions();
         handleUDPmessage(udp_socket, buffer);
     }
 
@@ -1541,12 +1707,20 @@ int recieveFile(int sockfd, char *FilePath, int Fsize)
 {
     int n;
     char buffer[MAX_BUFFER_SIZE];
+    int Flag = 0;
+    // print
+    printf("fszie: %d\n", Fsize);
+    // check if Fsize is valid >0 and <10MB
+    if (Fsize < 0 || Fsize > 10000000)
+    {
+        return 0;
+    }
+
     FILE *fp;
     int bytesReceived = 0;
     fp = fopen(FilePath, "w");
     if (fp == NULL)
     {
-        printf("Error opening file!\n");
         return 0;
     }
     while (bytesReceived < Fsize)
@@ -1555,15 +1729,35 @@ int recieveFile(int sockfd, char *FilePath, int Fsize)
         n = read(sockfd, buffer, sizeof(buffer));
         if (n == -1)
         {
-            printf("Error reading from socket\n");
-            exit(EXIT_FAILURE);
+            return 0;
         }
         else if (n)
         {
+            // Check if reading this chunk would exceed the expected file size
+            if (bytesReceived + n > Fsize)
+            {
+                // Adjust the size of the last chunk to avoid exceeding Fsize
+                n = Fsize - bytesReceived;
+                Flag = 1;
+            }
+
             fwrite(buffer, 1, n, fp);
             bytesReceived += n;
+            if (Flag)
+            {
+                // check if the message ends in \n
+                if (buffer[n - 1] == '\n')
+                {
+                    break;
+                }
+                else
+                {
+                    printf("Error recieving file\n");
+                }
+            }
         }
     }
+
     fclose(fp);
     return 1;
 }
@@ -1575,8 +1769,9 @@ int sendTCPMessage(int sockfd, char *message)
     n = write(sockfd, message, strlen(message));
     if (n == -1)
     {
-        printf("Error writing to socket\n");
-        exit(EXIT_FAILURE);
+        if (verbose)
+            printf("Error writing tcp response to socket\n");
+        return 0;
     }
     return 1;
 }
@@ -1591,7 +1786,7 @@ int handleOpenAuction(int sockfd)
     int nSpaces = 0;
     char UID[7];
     char Password[9];
-    char Name[128];
+    char Name[64];
     int startValue;
     int timeactive; // duration of auction in seconds
     char FileName[24];
@@ -1622,12 +1817,19 @@ int handleOpenAuction(int sockfd)
     // align the message  to start reading the file
     sscanf(buffer, "%s %s %s %d %d %s %d ", UID, Password, Name, &startValue, &timeactive, FileName, &Fsize);
 
-    printf(" info -> %s %s %s %d %d %s %d \n", UID, Password, Name, startValue, timeactive, FileName, Fsize);
+    // check udi aid and password and filename
+    if (!checkUID(UID) && !checkPassword(Password) && !checkFilename(FileName))
+    {
+        if (verbose)
+            printf("invalid input in command open auction\n");
+        sprintf(response, "%s %s", OPEN_AUCTION_RESPONSE, STATUS_ERR);
+        sendTCPMessage(sockfd, response);
+        return 0;
+    }
 
     // check if the user is logged in
     if (!CheckLogin(UID))
     {
-        printf("User is not logged in\n");
         sprintf(response, "%s %s", OPEN_AUCTION_RESPONSE, STATUS_NLG);
         sendTCPMessage(sockfd, response);
         return 0;
@@ -1635,13 +1837,10 @@ int handleOpenAuction(int sockfd)
     // check password
     if (!CheckPassword(UID, Password))
     {
-        printf("Wrong password\n");
         sprintf(response, "%s %s", OPEN_AUCTION_RESPONSE, STATUS_NOK);
         sendTCPMessage(sockfd, response);
         return 0;
     }
-
-    // TODO other checks
 
     // create the sequencial auction directory
     int AID = CreateAUCTIONDir();
@@ -1650,25 +1849,24 @@ int handleOpenAuction(int sockfd)
     i = StartAuction(AID, UID, Name, FileName, startValue, timeactive);
     if (i == 0)
     {
-        printf("Error starting auction\n");
         return 0;
     }
 
     // get the location to place the asset file
     sprintf(dirpath, "AUCTIONS/%03d/%s", AID, FileName);
 
-    // start reading an creating the asset file
+    // start reading and creating the asset file
     i = recieveFile(sockfd, dirpath, Fsize);
     if (i == 0)
     {
-        printf("Error creating file\n");
+        if (verbose)
+            printf("Error recieving file\n");
         return 0;
     }
     // create host file
     i = CreateHostFile(AID, UID);
     if (i == 0)
     {
-        printf("Error creating host file\n");
         return 0;
     }
     // create the "OK" response
@@ -1690,12 +1888,16 @@ int handleCloseAuction(int sockfd)
     int bytes_read = read(sockfd, buffer, MAX_BUFFER_SIZE);
     sscanf(buffer, " %s %s %s\n", UID, password, AID);
 
-    // TODO CHECKS
-
+    // check if inputs are valid and if message ends in \n
+    if (!checkUID(UID) && !checkPassword(password) && !checkAID(AID) && buffer[strlen(buffer) - 1] != '\n')
+    {
+        sprintf(response, "%s %s", CLOSE_AUCTION_RESPONSE, STATUS_ERR);
+        sendTCPMessage(sockfd, response);
+        return 0;
+    }
     // check if the user is logged in
     if (!CheckLogin(UID))
     {
-        printf("User is not logged in\n");
         sprintf(response, "%s %s", CLOSE_AUCTION_RESPONSE, STATUS_NLG);
         sendTCPMessage(sockfd, response);
         return 0;
@@ -1703,7 +1905,6 @@ int handleCloseAuction(int sockfd)
     // check if user owns the auction
     if (!CheckUserOwnsAuction(atoi(AID), UID))
     {
-        printf("User does not own the auction\n");
         sprintf(response, "%s %s", CLOSE_AUCTION_RESPONSE, STATUS_EOW);
         sendTCPMessage(sockfd, response);
         return 0;
@@ -1712,7 +1913,6 @@ int handleCloseAuction(int sockfd)
     // check if auction exists
     if (!CheckAuctionExists(atoi(AID)))
     {
-        printf("Auction does not exist\n");
         sprintf(response, "%s %s", CLOSE_AUCTION_RESPONSE, STATUS_EAU);
         sendTCPMessage(sockfd, response);
         return 0;
@@ -1720,7 +1920,6 @@ int handleCloseAuction(int sockfd)
     // check if the auction is active
     if (!CheckAuctionActive(atoi(AID)))
     {
-        printf("Auction is not active\n");
         sprintf(response, "%s %s", CLOSE_AUCTION_RESPONSE, STATUS_END);
         sendTCPMessage(sockfd, response);
         return 0;
@@ -1729,7 +1928,6 @@ int handleCloseAuction(int sockfd)
     int i = EndAuction(atoi(AID));
     if (i == 0)
     {
-        printf("Error ending auction\n");
         return 0;
     }
     sprintf(response, "%s %s", CLOSE_AUCTION_RESPONSE, STATUS_OK);
@@ -1760,12 +1958,21 @@ int handleBidRequest(int sockfd)
 
     // get the info from the buffer
     sscanf(buffer, "%s %s %s %d", UID, password, AID, &bid_ammount);
+    // check if inputs are valid and if message ends in \n
+    if (!checkUID(UID) && !checkPassword(password) && !checkAID(AID) && buffer[strlen(buffer) - 1] != '\n')
+    {
+        sprintf(response, "%s %s\n", BID_RESPONSE, STATUS_ERR);
+        if (verbose)
+        {
+            printf("response: %s\n", response);
+        }
+        sendTCPMessage(sockfd, response);
+        return 0;
+    }
 
     // check if password is correct
-
     if (!CheckPassword(UID, password))
     {
-        printf("Wrong password\n");
         sprintf(response, "%s %s\n", BID_RESPONSE, STATUS_NOK);
         sendTCPMessage(sockfd, response);
         return 0;
@@ -1773,7 +1980,6 @@ int handleBidRequest(int sockfd)
     // check if user is logged in
     if (!CheckLogin(UID))
     {
-        printf("User is not logged in\n");
         sprintf(response, "%s %s\n", BID_RESPONSE, STATUS_NLG);
         sendTCPMessage(sockfd, response);
         return 0;
@@ -1781,7 +1987,6 @@ int handleBidRequest(int sockfd)
     // check if auction exists
     if (!CheckAuctionExists(atoi(AID)))
     {
-        printf("Auction does not exist\n");
         sprintf(response, "%s %s\n", BID_RESPONSE, STATUS_NOK);
         sendTCPMessage(sockfd, response);
         return 0;
@@ -1789,7 +1994,6 @@ int handleBidRequest(int sockfd)
     // check if the auction is active
     if (!CheckAuctionActive(atoi(AID)))
     {
-        printf("Auction is not active\n");
         sprintf(response, "%s %s\n", BID_RESPONSE, STATUS_NOK);
         sendTCPMessage(sockfd, response);
         return 0;
@@ -1797,17 +2001,15 @@ int handleBidRequest(int sockfd)
     // check the ownership of the auction
     if (CheckUserOwnsAuction(atoi(AID), UID))
     {
-        printf("User owns the auction\n");
         sprintf(response, "%s %s\n", BID_RESPONSE, STATUS_ILG);
         sendTCPMessage(sockfd, response);
         return 0;
     }
     // check if the bid is valid
     int lastBid = GetLastBid(atoi(AID));
-    printf("lastBid: %d\n", lastBid);
+    // check if bid is valid
     if (bid_ammount <= lastBid)
     {
-        printf("Bid ammount is invalid\n");
         sprintf(response, "%s %s\n", BID_RESPONSE, STATUS_REF);
         sendTCPMessage(sockfd, response);
         return 0;
@@ -1816,7 +2018,6 @@ int handleBidRequest(int sockfd)
     int i = MakeBid(atoi(AID), UID, bid_ammount);
     if (i == 0)
     {
-        printf("Error making bid\n");
         sprintf(response, "%s %s\n", BID_RESPONSE, STATUS_ERR);
         sendTCPMessage(sockfd, response);
         return 0;
@@ -1906,35 +2107,35 @@ int handleShowAsset(int sockfd)
 }
 
 // handle tcp commands
-int handleTCPCommand(int sockfd, char *command)
+int handleTCPCommand(int sockfd)
 {
-    // check if command is valid
-    if (strlen(command) - 1 != 3)
+    char command[4];
+    // Handle the TCP message
+    if (verbose)
     {
-        printf("Command is invalid\n");
-        return 0;
+        printf("TCP command received: %s\n", command);
+        printf("Update all auctions...\n");
     }
-    if (command[3] != ' ')
+
+    UpdateAllAuctions();
+
+    int i = read(sockfd, command, 4);
+    if (i == -1)
     {
-        printf("Command is invalid\n");
-        return 0;
-    }
-    for (int i = 0; i < strlen(command) - 1; i++)
-    {
-        if (!isalpha(command[i]) || !isupper(command[i]))
-        {
-            printf("Command is invalid\n");
-            return 0;
-        }
-    }
+        if (verbose)
+            printf("Error reading from socket\n");
+        exit(EXIT_FAILURE);
+    };
+
     // handle the command
     if (!strcmp(command, OPEN_AUCTION_REQUEST))
     {
         int i = handleOpenAuction(sockfd);
         if (i == 0)
         {
-            printf("Error handling open auction request\n");
-            return 0;
+            if (verbose)
+                printf("Error handling open auction request\n");
+            exit(EXIT_FAILURE);
         }
     }
     else if (!strcmp(command, CLOSE_AUCTION_REQUEST))
@@ -1943,8 +2144,9 @@ int handleTCPCommand(int sockfd, char *command)
 
         if (i == 0)
         {
-            printf("Error handling open auction response\n");
-            return 0;
+            if (verbose)
+                printf("Error handling open auction response\n");
+            exit(EXIT_FAILURE);
         }
     }
     else if (!strcmp(command, SHOW_ASSET_REQUEST))
@@ -1953,8 +2155,9 @@ int handleTCPCommand(int sockfd, char *command)
 
         if (i == 0)
         {
-            printf("Error handling show asset response\n");
-            return 0;
+            if (verbose)
+                printf("Error handling show asset response\n");
+            exit(EXIT_FAILURE);
         }
     }
     else if (!strcmp(command, BID_REQUEST))
@@ -1962,37 +2165,22 @@ int handleTCPCommand(int sockfd, char *command)
         int i = handleBidRequest(sockfd);
         if (i == 0)
         {
-            printf("Error handling bid request\n");
-            return 0;
+            if (verbose)
+                printf("Error handling bid request\n");
+            exit(EXIT_FAILURE);
         }
     }
     else
     {
-        printf("Command is invalid\n");
-        return 0;
-    }
-}
-
-// handle tcp messages
-void handleTCPMessage(int sockfd)
-{
-
-    char command[4];
-
-    int i = read(sockfd, command, 4);
-    if (i == -1)
-    {
-        printf("Error reading from socket\n");
+        if (verbose)
+        {
+            printf("recieved a command not recognized\n");
+        }
+        char response[MAX_BUFFER_SIZE];
+        sprintf(response, "%s\n", STATUS_ERR);
+        sendTCPMessage(sockfd, response);
         exit(EXIT_FAILURE);
-    };
-
-    // Handle the TCP message
-    printf("TCP command received: %s\n", command);
-    printf("========Update all auctions===========\n");
-    UpdateAllAuctions();
-    printf("==========finished update=============\n");
-    handleTCPCommand(sockfd, command);
-    return;
+    }
 }
 
 // signal handler
@@ -2065,7 +2253,7 @@ void *tcpThread(void *arg)
             if (fork() == 0)
             {
                 close(fd); // Close the original socket in the child process
-                handleTCPMessage(newSockfd);
+                handleTCPCommand(newSockfd);
                 sleep(10);
                 printf("conection ended\n");
                 close(newSockfd);
@@ -2089,11 +2277,7 @@ int main(int argc, char *argv[])
     strcpy(AS_PORT, AS_PORT_BASE);
     printf("AS_PORT_base: %s\n", AS_PORT);
     int i = 1;
-    printf("argc: %d\n", argc);
-    printf("argv: %s\n", argv[0]);
-    printf("argv: %s\n", argv[1]);
-    printf("argv: %s\n", argv[2]);
-    printf("argv: %s\n", argv[3]);
+    // check is verbose is on and chosen port
     while (i < argc)
     {
 
