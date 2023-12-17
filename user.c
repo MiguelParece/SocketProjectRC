@@ -24,7 +24,8 @@
 #include <sys/sendfile.h>
 #include <sys/stat.h>
 
-#define AS_IP "tejo.tecnico.ulisboa.pt"
+// #define AS_IP "tejo.tecnico.ulisboa.pt"
+#define AS_IP "localhost"
 #define AS_PORT "58011"
 
 #define AS_RESPONSETOKEN_LOGIN "RLU"
@@ -32,7 +33,7 @@
 #define AS_RESPONSETOKEN_LOGIN_FAIL "NOK"
 #define AS_RESPONSETOKEN_LOGIN_REG "REG"
 
-#define MAX_BUFFER_SIZE 1024
+#define MAX_BUFFER_SIZE 1024 * 1000
 #define MAX_FILENAME_LENGTH 24
 #define MAX_FILE_SIZE 10000000 // 10 MB
 
@@ -54,6 +55,8 @@ void sendUDPMessage(const char *message, char *response)
     struct addrinfo hints, *res;
     struct sockaddr_in addr;
     char buffer[MAX_BUFFER_SIZE];
+    // clear buffer
+    memset(buffer, 0, sizeof(buffer));
 
     fd = socket(AF_INET, SOCK_DGRAM, 0);
     if (fd == -1)
@@ -75,11 +78,10 @@ void sendUDPMessage(const char *message, char *response)
         exit(1);
 
     addrlen = sizeof(addr);
-    n = recvfrom(fd, buffer, 128, 0,
+    n = recvfrom(fd, response, MAX_BUFFER_SIZE, 0,
                  (struct sockaddr *)&addr, &addrlen);
     if (n == -1) /*error*/
         exit(1);
-    strcpy(response, buffer);
     freeaddrinfo(res);
     close(fd);
 }
@@ -92,6 +94,8 @@ void sendTCPMessage(const char *message, int fdImage, char *response)
     struct addrinfo hints, *res;
     struct sockaddr_in addr;
     char buffer[MAX_BUFFER_SIZE];
+    memset(buffer, 0, sizeof(buffer));
+
     fd = socket(AF_INET, SOCK_STREAM, 0); // TCP socket
     if (fd == -1)
         exit(1); // error
@@ -214,8 +218,8 @@ void reciveTCPFile(char *message)
             i++;
         }
     }
-    printf("->%s\n", buffer);
-    // get the token and status and Fname and Fsize from buffer
+    // printf("->%s\n", buffer);
+    //  get the token and status and Fname and Fsize from buffer
     sscanf(buffer, "%s %s %s %s", token, status, Fname, Fsize);
     printf("Fname->%s\n", Fname);
     printf("Fsize->%s\n", Fsize);
@@ -262,6 +266,7 @@ void handleLogin()
         // Send the request to the Auction Server using UDP
         sendUDPMessage(request, response);
 
+        printf("reses->%s\n", response);
         // handle response
         sscanf(response, "%s %s", token, status);
         if (!strcmp(status, AS_RESPONSETOKEN_ACCEPTED) || !strcmp(status, AS_RESPONSETOKEN_LOGIN_REG))
@@ -271,7 +276,7 @@ void handleLogin()
         }
         else
         {
-            printf("%s %s", token, status);
+            printf("%s %s\n", token, status);
         }
     }
 }
@@ -306,7 +311,7 @@ void handleUnregister()
     char request[MAX_BUFFER_SIZE];
     char response[MAX_BUFFER_SIZE];
     char token[4], status[3];
-    sprintf(request, "unregister %s %s\n", myUser.uid, myUser.password);
+    sprintf(request, "UNR %s %s\n", myUser.uid, myUser.password);
 
     // Send the request to the Auction Server using UDP
     sendUDPMessage(request, response);
@@ -420,7 +425,7 @@ void handleCloseAuction(const char *aid)
 void handleMyAuctions()
 {
     char request[MAX_BUFFER_SIZE];
-    char response[MAX_BUFFER_SIZE];
+    char response[MAX_BUFFER_SIZE * 10];
     char token[4], status[3], list[MAX_BUFFER_SIZE];
     sprintf(request, "LMA %s\n", myUser.uid);
 
@@ -428,8 +433,9 @@ void handleMyAuctions()
 
     sendUDPMessage(request, response);
     // Receive and handle the response
-    sscanf(response, "%s %s %s", token, status, list);
-
+    int n = 0;
+    sscanf(response, "%s %s %n", token, status, &n);
+    strcpy(list, response + n);
     if (!strcmp(status, AS_RESPONSETOKEN_ACCEPTED))
     {
         write(1, "success\n", 9);
@@ -550,12 +556,20 @@ void handleShowRecord(const char *aid)
 }
 // ...
 
-// Main function
-int main(int argc, char *argv[])
+int main()
 {
-    write(1, "HelloWorld\n", 11);
+    // clear response buffer
+    myUser.loggedIn = true;
+    strcpy(myUser.uid, "000004");
+    strcpy(myUser.password, "password");
+    handleOpenAuction("name", "0.jpg", "100", "100");
+    return 0;
+}
+// Main function
+/*int main(int argc, char *argv[])
+{
+    printf("Welcome to the Auction Client!\n");
     char command[128];
-    myUser.loggedIn = false;
     while (1)
     {
         scanf("%s", command);
@@ -711,3 +725,4 @@ int main(int argc, char *argv[])
         }
     }
 }
+*/
