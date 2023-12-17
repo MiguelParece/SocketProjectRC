@@ -1441,7 +1441,7 @@ int handleListAllAuctionsRequest(int sockfd)
     // send response
     if (n == 0)
     {
-        printf("0 auctions hosted by this user\n");
+        printf("0 auctions\n");
         sprintf(response, "%s %s\n", LIST_AUC_RESPONSE, STATUS_NOK);
         if (verbose)
         {
@@ -1607,7 +1607,10 @@ int handleUDPmessage(int sockfd, char *message)
     {
         char UID[7];
         char Password[8];
+
         sscanf(message, "%*s %s %s", UID, Password);
+        printf("message: %s\n", message);
+
         // check if inputs are valid and if message ends in \n
         if (checkUID(UID) && checkPassword(Password) && message[strlen(message) - 1] == '\n')
             handleLoginRequest(sockfd, UID, Password);

@@ -363,7 +363,6 @@ void handleLogin()
     // Send the request to the Auction Server using UDP
     sendUDPMessage(request, response);
 
-    printf("reses->%s\n", response);
     // handle response
     sscanf(response, "%s %s", token, status);
     if (!strcmp(token, LOGIN_RESPONSE) || !strcmp(status, STATUS_OK) || !strcmp(status, STATUS_REG))
@@ -428,8 +427,12 @@ void handleUnregister()
 // Function to handle exit command
 void handleExit()
 {
-    // Perform local exit operations
-    // ...
+    if (myUser.loggedIn)
+    {
+        handleLogout();
+    }
+    printf("Exiting...\n");
+    exit(0);
 }
 
 // Function to handle open auction request
@@ -648,10 +651,16 @@ void handleBid(const char *aid, const char *value)
         {
             printf("You cannot bid on your auctions.\n");
         }
+        else
+        {
+            printf("Err in response\n");
+            exit(1);
+        }
     }
     else
     {
         printf("Err in response\n");
+        exit(1);
     }
 }
 
@@ -869,6 +878,12 @@ int main(int argc, char *argv[])
             scanf("%s", aid);
             if (checkAID(aid))
                 handleShowRecord(aid);
+        }
+        // command exit
+        else if (!strcmp(command, "exit"))
+        {
+            handleExit();
+            break;
         }
         else
         {
