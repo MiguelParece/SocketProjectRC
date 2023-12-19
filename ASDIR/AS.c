@@ -248,7 +248,6 @@ int CreateLogin(char *UID)
     fp = fopen(loginName, "w");
     if (fp == NULL)
     {
-        printf("Error opening file!\n");
         return 0;
     }
     fprintf(fp, "Logged in\n");
@@ -338,17 +337,13 @@ int CheckLogin(char *UID)
     // check if the user is registered
     if (!CheckUserRegistered(UID))
     {
-        printf("User is not registered\n");
         return 0;
     }
-    printf("UID: %s\n", UID);
     char userID[45];
     sprintf(userID, "USERS/%s/%s_login.txt", UID, UID);
-    printf("userID: %s\n", userID);
 
     if (access(userID, F_OK) == -1)
     {
-        printf("User is not logged in\n");
         return 0;
     }
     else
@@ -458,7 +453,6 @@ int CreateHostFile(int AID, char *UID)
     fp = fopen(hostName, "w");
     if (fp == NULL)
     {
-        printf("Error opening file!\n");
         return 0;
     }
     fprintf(fp, "Hosted\n");
@@ -508,7 +502,6 @@ int GetAuctionStartFullTime(int AID)
     // check if the file exists
     if (access(startName, F_OK) == -1)
     {
-        printf("Start file does not exist\n");
         return 0;
     }
     // read the start fulltime from the file
@@ -516,7 +509,6 @@ int GetAuctionStartFullTime(int AID)
     fp = fopen(startName, "r");
     if (fp == NULL)
     {
-        printf("Error opening file!\n");
         return 0;
     }
     // read the start fulltime
@@ -536,7 +528,6 @@ int EndAuction(int AID)
     fp = fopen(endName, "w");
     if (fp == NULL)
     {
-        printf("Error opening file!\n");
         return 0;
     }
     // get the current time
@@ -568,7 +559,6 @@ int GetAuctionTimeActive(int AID)
     // check if the file exists
     if (access(startName, F_OK) == -1)
     {
-        printf("Start file does not exist\n");
         return 0;
     }
     // read the time active from the file
@@ -576,7 +566,6 @@ int GetAuctionTimeActive(int AID)
     fp = fopen(startName, "r");
     if (fp == NULL)
     {
-        printf("Error opening file!\n");
         return 0;
     }
     // read the time active
@@ -595,7 +584,6 @@ int CheckAuctionExists(int AID)
     // check if the file exists
     if (access(startName, F_OK) == -1)
     {
-        printf("Start file does not exist\n");
         return 0;
     }
     return 1;
@@ -621,7 +609,6 @@ int CheckAuctionEnd(int AID)
         int i = EndAuction(AID);
         if (i == 0)
         {
-            printf("Error ending auction\n");
             return 0;
         }
         return 1;
@@ -643,7 +630,6 @@ int CheckAuctionActive(int AID)
     }
     else
     {
-        printf("Auction %d is not active\n", AID);
         return 0;
     }
 }
@@ -707,7 +693,6 @@ int LoadBidAuction(const char *filename, BIDLIST *list)
 {
     if (list->no_bids == 50)
     {
-        printf("Bid list is full\n");
         return 0;
     }
     sscanf(filename, "AUCTIONS/%d/BIDS/%d", &list->bids[list->no_bids].auction_bid_id, &list->bids[list->no_bids].bid_ammount);
@@ -716,7 +701,6 @@ int LoadBidAuction(const char *filename, BIDLIST *list)
     fp = fopen(filename, "r");
     if (fp == NULL)
     {
-        printf("Error opening file!\n");
         return 0;
     }
     // read the UID bid_amount bid_datetime bid_sec_time
@@ -790,14 +774,12 @@ int GetLastBid(int AID)
     // if there is 0 bids in the auction return the start value in the start file
     if (n == 0)
     {
-        printf("0 bids in this auction\n");
         // get the start value of the auction
         char startName[35];
         snprintf(startName, sizeof(startName), "AUCTIONS/%03d/Start_%03d.txt", AID, AID);
         // check if the file exists
         if (access(startName, F_OK) == -1)
         {
-            printf("Start file does not exist\n");
             return 0;
         }
         // read the start value from the file
@@ -805,7 +787,6 @@ int GetLastBid(int AID)
         fp = fopen(startName, "r");
         if (fp == NULL)
         {
-            printf("Error opening file!\n");
             return 0;
         }
         // read the start value
@@ -833,7 +814,6 @@ int MakeBid(int AID, char *uid, int bid_ammount)
     // Check if AID is within a valid range (1 to 999)
     if (AID < 1 || AID > 999)
     {
-        printf("Auction ID is invalid\n");
         return 0;
     }
 
@@ -843,7 +823,6 @@ int MakeBid(int AID, char *uid, int bid_ammount)
     // Check if the auction directory exists
     if (access(AID_dirname, F_OK) == -1)
     {
-        printf("Auction directory does not exist\n");
         return 0;
     }
 
@@ -851,7 +830,6 @@ int MakeBid(int AID, char *uid, int bid_ammount)
 
     if (bid_ammount <= lastBid)
     {
-        printf("Bid ammount is invalid\n");
         return 0;
     }
     // Create the directory path for the bids within the auction directory
@@ -860,14 +838,12 @@ int MakeBid(int AID, char *uid, int bid_ammount)
     // Check if the bids directory exists
     if (access(BIDS_dirname, F_OK) == -1)
     {
-        printf("Bids directory does not exist\n");
         return 0;
     }
 
     // Check if UID is within a valid range (1 to 999999)
     if (UID < 1 || UID > 999999)
     {
-        printf("User ID is invalid\n");
         return 0;
     }
 
@@ -876,7 +852,6 @@ int MakeBid(int AID, char *uid, int bid_ammount)
     // Check if the user directory exists
     if (access(UID_dirname, F_OK) == -1)
     {
-        printf("User directory does not exist\n");
         return 0;
     }
     // Create the full path to the bid file
@@ -921,7 +896,6 @@ int LoadBidUser(const char *filename, BIDLIST *list)
 {
     if (list->no_bids == 999)
     {
-        printf("Bid list is full\n");
         return 0;
     }
     sscanf(filename, "USERS/%*d/BIDDED/%d.txt", &list->bids[list->no_bids].auction_bid_id);
@@ -950,7 +924,6 @@ int GetBidListUser(char *UID, BIDLIST *list)
 
     // Scan the directory and get the list of files
     entries = scandir(dirname, &filelist, 0, alphasort);
-    printf("entries: %d\n", entries);
 
     // Check if there are no entries in the directory
     if (entries <= 0)
@@ -968,7 +941,6 @@ int GetBidListUser(char *UID, BIDLIST *list)
         {
             // Create the full path to the bid file
             sprintf(pathname, "USERS/%s/BIDDED/%s", UID, filelist[entries]->d_name);
-            printf("pathname: %s\n", pathname);
             // Load the bid information from the file and increment the bid count
             if (LoadBidUser(pathname, list))
                 ++nbids;
@@ -994,7 +966,6 @@ int LoadAuction(const char *filename, AUCTIONLIST *list)
 {
     if (list->no_auctions == 999)
     {
-        printf("Auction list is full\n");
         return 0;
     }
     sscanf(filename, "USERS/%*d/HOSTED/%d.txt", &list->AID[list->no_auctions].AID);
@@ -1012,7 +983,6 @@ int LoadAuctionDir(const char *filename, AUCTIONLIST *list)
 {
     if (list->no_auctions == 999)
     {
-        printf("Auction list is full\n");
         return 0;
     }
     sscanf(filename, "AUCTIONS/%d", &list->AID[list->no_auctions].AID);
@@ -1045,9 +1015,6 @@ int ListHostedAuctions(char *UID, AUCTIONLIST *list)
 
     nauctions = 0;
     list->no_auctions = 0;
-
-    // print entrys
-    printf("entries: %d\n", entries);
 
     // Iterate through the directory entries
     while (entries--)
@@ -1139,7 +1106,6 @@ int sendUDPMessage(int sockfd, char *message)
     int n = sendto(sockfd, message, strlen(message), 0, (struct sockaddr *)&addr, addrlen);
     if (n == -1)
     {
-        printf("Error writing to socket\n");
         exit(EXIT_FAILURE);
     }
     return 1;
@@ -1208,7 +1174,6 @@ int handleLogoutRequest(int sockfd, char *UID, char *Password)
     // check if the user is registered
     if (!CheckUserRegistered(UID))
     {
-        printf("User is not registered\n");
         sprintf(response, "%s %s\n", LOGOUT_RESPONSE, STATUS_UNR);
         if (verbose)
         {
@@ -1220,7 +1185,6 @@ int handleLogoutRequest(int sockfd, char *UID, char *Password)
     // check if the user is logged in
     if (!CheckLogin(UID))
     {
-        printf("User is not logged in\n");
         sprintf(response, "%s %s\n", LOGOUT_RESPONSE, STATUS_NOK);
         if (verbose)
         {
@@ -1264,7 +1228,6 @@ int handleUnregisterRequest(int sockfd, char *UID, char *Password)
     // check if the user is registered
     if (!CheckUserRegistered(UID))
     {
-        printf("User is not registered\n");
         sprintf(response, "%s %s\n", UNREGISTER_RESPONSE, STATUS_UNR);
         if (verbose)
         {
@@ -1276,7 +1239,6 @@ int handleUnregisterRequest(int sockfd, char *UID, char *Password)
     // check if the user is logged in
     if (!CheckLogin(UID))
     {
-        printf("User is not logged in\n");
         sprintf(response, "%s %s\n", UNREGISTER_RESPONSE, STATUS_NOK);
         if (verbose)
         {
@@ -1288,7 +1250,6 @@ int handleUnregisterRequest(int sockfd, char *UID, char *Password)
     // check password
     if (!CheckPassword(UID, Password))
     {
-        printf("Password is incorrect\n");
         sprintf(response, "%s %s\n", UNREGISTER_RESPONSE, STATUS_NOK);
         if (verbose)
         {
@@ -1326,7 +1287,6 @@ int handleListMyAucRequest(int sockfd, char *UID)
     // check if user is logged in
     if (!CheckLogin(UID))
     {
-        printf("User is not logged in\n");
         sprintf(response, "%s %s\n", LIST_MY_AUC_RESPONSE, STATUS_NLG);
         if (verbose)
         {
@@ -1338,11 +1298,9 @@ int handleListMyAucRequest(int sockfd, char *UID)
 
     AUCTIONLIST list;
     int n = ListHostedAuctions(UID, &list);
-    printf("n: %d\n", n);
     // send response
     if (n == 0)
     {
-        printf("0 auctions hosted by this user\n");
         sprintf(response, "%s %s\n", LIST_MY_AUC_RESPONSE, STATUS_NOK);
         if (verbose)
         {
@@ -1367,7 +1325,6 @@ int handleListMyAucRequest(int sockfd, char *UID)
     }
 
     sprintf(response, "%s %s %s\n", LIST_MY_AUC_RESPONSE, STATUS_OK, auctions);
-    printf("response: %s\n", response);
     if (verbose)
     {
         printf("response: %s\n", response);
@@ -1383,7 +1340,6 @@ int handleListMyBidRequest(int sockfd, char *UID)
     // check if user is logged in
     if (!CheckLogin(UID))
     {
-        printf("User is not logged in\n");
         sprintf(response, "%s %s\n", LIST_MY_BID_RESPONSE, STATUS_NLG);
         if (verbose)
         {
@@ -1395,11 +1351,9 @@ int handleListMyBidRequest(int sockfd, char *UID)
 
     BIDLIST list;
     int n = GetBidListUser(UID, &list);
-    printf("n: %d\n", n);
     // send response
     if (n == 0)
     {
-        printf("0 bids made by this user\n");
         sprintf(response, "%s %s\n", LIST_MY_BID_RESPONSE, STATUS_NOK);
         if (verbose)
         {
@@ -1437,11 +1391,11 @@ int handleListAllAuctionsRequest(int sockfd)
 
     AUCTIONLIST list;
     int n = ListAllAuctions(&list);
-    printf("n: %d\n", n);
     // send response
     if (n == 0)
     {
-        printf("0 auctions\n");
+        if (verbose)
+            printf("0 auctions\n");
         sprintf(response, "%s %s\n", LIST_AUC_RESPONSE, STATUS_NOK);
         if (verbose)
         {
@@ -1479,7 +1433,6 @@ int handleShowRecRequest(int sockfd, char *AID)
     // check if auction exists
     if (!CheckAuctionExists(atoi(AID)))
     {
-        printf("Auction does not exist\n");
         sprintf(response, "%s %s\n", SHOW_REC_RESPONSE, STATUS_NOK);
         if (verbose)
         {
@@ -1497,7 +1450,6 @@ int handleShowRecRequest(int sockfd, char *AID)
     fp = fopen(startName, "r");
     if (fp == NULL)
     {
-        printf("Error opening file!\n");
         sprintf(response, "%s %s\n", SHOW_REC_RESPONSE, STATUS_NOK);
         if (verbose)
         {
@@ -1823,8 +1775,7 @@ int recieveFile(int sockfd, char *FilePath, int Fsize)
     int n;
     char buffer[MAX_BUFFER_SIZE];
     int Flag = 0;
-    // print
-    printf("fszie: %d\n", Fsize);
+
     // check if Fsize is valid >0 and <10MB
     if (Fsize < 0 || Fsize > MAX_FILE_SIZE)
     {
@@ -1867,7 +1818,8 @@ int recieveFile(int sockfd, char *FilePath, int Fsize)
                 }
                 else
                 {
-                    printf("Error recieving file\n");
+                    if (verbose)
+                        printf("Error recieving file\n");
                 }
             }
         }
@@ -2242,7 +2194,6 @@ int handleShowAsset(int sockfd)
     // check if auction exists
     if (!CheckAuctionExists(atoi(AID)))
     {
-        printf("Auction does not exist\n");
         sprintf(response, "%s %s", SHOW_ASSET_RESPONSE, STATUS_EAU);
         if (verbose)
         {
@@ -2438,8 +2389,8 @@ void *tcpThread(void *arg)
         perror("TCP socket listen failed");
         exit(EXIT_FAILURE);
     }
-
-    printf("TCP server is listening on port %s\n", AS_PORT);
+    if (verbose)
+        printf("server is listening on port %s\n", AS_PORT);
 
     // set up signal handler
     struct sigaction sa;
@@ -2469,7 +2420,6 @@ void *tcpThread(void *arg)
                 close(fd); // Close the original socket in the child process
                 handleTCPCommand(newSockfd);
                 sleep(10);
-                printf("conection ended\n");
                 close(newSockfd);
                 exit(EXIT_SUCCESS);
             }
