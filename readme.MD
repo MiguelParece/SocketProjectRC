@@ -11,6 +11,6 @@ This project demonstrates a simple UDP/TCP server written in C that can handle m
 ### Building
 
 ```bash
-gcc -o udp_server udp_server.c -lpthread
+gcc -o AS AS.c -lpthread
 
 
